@@ -77,7 +77,7 @@ steps:
 ```
   deploy:
     runs-on: ubuntu-latest
-    needs: build  # плохая практика №5: последовательное выполнение этапов вместо параллельного
+    needs: build
     steps:
       - name: Deploy step
         env:
