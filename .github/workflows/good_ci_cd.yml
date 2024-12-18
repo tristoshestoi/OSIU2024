@@ -6,9 +6,8 @@ on:
       - main
 
 jobs:
-  # хорошая практика №1: версионирование образа
   build:
-    runs-on: ubuntu-20.04  # указываем конкретную версию образа
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -16,12 +15,10 @@ jobs:
       - name: Build step
         run: |
           echo "Building application..."
-          # Здесь мог бы быть реальный процесс сборки
+          echo "Build complete!"
 
-  # хорошая практика №2: выполнение тестов
   unit_tests:
     runs-on: ubuntu-20.04
-    needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -29,36 +26,43 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"  # используем конкретную версию Python
+          python-version: "3.9"
 
       - name: Install pytest
         run: pip install pytest
 
       - name: Run unit tests
-        run: pytest lab4/tests/
+        run: pytest lab4/test_math.py
 
-  # хорошая практика №3: безопасное хранение секретов
+  # Стадия деплоя
   deploy:
     runs-on: ubuntu-20.04
-    needs: unit_tests  # выполняем деплой только после успешного прохождения тестов
+    needs: [build]  # Деплой зависит только от стадии build
     steps:
       - name: Deploy step
-        env:  # используем секреты, хранящиеся в безопасном месте (в нашем случае - GitHub Secrets)
+        env:
           SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
         run: |
           echo "Deploying application..."
           echo "Using secret: $SECRET_TOKEN"
-          # Здесь мог бы быть реальный процесс деплоя
 
-  # хорошая практика №5: параллельное выполнение процессов
-  notify:
+  notify_build:
     runs-on: ubuntu-20.04
-    needs: [build, unit_tests, deploy]  # уведомления запускаются после всех этапов
+    needs: [build]
     steps:
-      - name: Send notifications
-        run: |
-          echo "Sending notification about the status of the workflow..."
-          echo "Build, tests, and deployment have completed successfully."
+      - name: Notify build complete
+        run: echo "Build completed successfully!"
 
-  # хорошая практика №4: уведомления
-  # этот шаг включён в задачу `notify` для уведомления разработчиков
+  notify_tests:
+    runs-on: ubuntu-20.04
+    needs: [unit_tests]
+    steps:
+      - name: Notify tests complete
+        run: echo "Tests completed successfully!"
+
+  notify_deploy:
+    runs-on: ubuntu-20.04
+    needs: [deploy]
+    steps:
+      - name: Notify deploy complete
+        run: echo "Deploy completed successfully!"
