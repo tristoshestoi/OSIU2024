@@ -1,6 +1,6 @@
 # Пример плохого CI/CD файла
 
-Ниже представлен код CI/CD файла с плохими практиками
+Ниже представлен код CI/CD файла с плохими практиками:
 
 ```
 name: Bad Practices Workflow
@@ -37,8 +37,7 @@ jobs:
 
 
 ## Плохая практика №1. Нет версионирования
-Отсутствие явного указания версии может привести к непредсказуемым результатам
-Например, мы просто используем latest tag, что может привести к ошибкам
+Отсутствие явного указания версии может привести к непредсказуемым результатам. Например, мы просто используем latest tag, что может привести к ошибкам.
 
 ```
 jobs:
@@ -55,8 +54,7 @@ jobs:
 ```
 
 ## Плохая практика №2. Не выполняется тестирование
-Запуск без тестов может привести к тому, что ошибки не будут обнаружены до выхода в продакшен
-В нашем коде мы решили просто пропустить этап тестирования)  
+Запуск без тестов может привести к тому, что ошибки не будут обнаружены до выхода в продакшен. В нашем коде мы решили просто пропустить этап тестирования)  
 То есть build сразу идёт deploy.
 
 ## Плохая практика №3. Неправильное использование секретов
@@ -71,10 +69,10 @@ steps:
 ```
 
 ## Плохая практика №4. Отсутствие уведомлений
-Разработчики не получают уведомлений о статусе сборки, что затрудняет выявление ошибок
+Разработчики не получают уведомлений о статусе сборки, что затрудняет выявление ошибок.
 
 ## Плохая практика №5. Долгие процессы без параллельного выполнения
-Если все работает последовательно, это увеличивает время развертывания
+Если все работает последовательно, это увеличивает время развертывания.
 
 ```
   deploy:
@@ -93,7 +91,7 @@ steps:
 
 ## Результаты деплоя
 
-Подробные этапы деплоя можно посмотреть во вкладке Actions  
+Подробные этапы деплоя можно посмотреть во вкладке Actions.  
 
 ![image](https://github.com/user-attachments/assets/acb8b234-d33b-4fe5-b3b5-581628e33cba)
 
@@ -101,7 +99,7 @@ steps:
 
 # Пример хорошего CI/CD файла
 
-Ниже представлен код CI/CD файла с хорошими практиками
+Ниже представлен код CI/CD файла с хорошими практиками:
 
 ```
 name: Good Practices Workflow
@@ -121,10 +119,10 @@ jobs:
       - name: Build step
         run: |
           echo "Building application..."
+          echo "Build complete!"
 
   unit_tests:
     runs-on: ubuntu-20.04
-    needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -138,11 +136,11 @@ jobs:
         run: pip install pytest
 
       - name: Run unit tests
-        run: pytest lab4/tests/
+        run: pytest lab4/tests
 
   deploy:
     runs-on: ubuntu-20.04
-    needs: unit_tests
+    needs: [build]
     steps:
       - name: Deploy step
         env:
@@ -151,19 +149,32 @@ jobs:
           echo "Deploying application..."
           echo "Using secret: $SECRET_TOKEN"
 
-  notify:
+  notify_build:
     runs-on: ubuntu-20.04
-    needs: [build, unit_tests, deploy]
+    needs: [build]
     steps:
-      - name: Send notifications
-        run: |
-          echo "Sending notification about the status of the workflow..."
-          echo "Build, tests, and deployment have completed successfully."
+      - name: Notify build complete
+        run: echo "Build completed successfully!"
+
+  notify_tests:
+    runs-on: ubuntu-20.04
+    needs: [unit_tests]
+    steps:
+      - name: Notify tests complete
+        run: echo "Tests completed successfully!"
+
+  notify_deploy:
+    runs-on: ubuntu-20.04
+    needs: [deploy]
+    steps:
+      - name: Notify deploy complete
+        run: echo "Deploy completed successfully!"
+
 
 ```
 
 ## Хорошая практика №1. Версионирование образа
-Указываем конкретную версию образа
+Указываем конкретную версию образа.
 ```
 jobs:
   # хорошая практика №1: версионирование образа
@@ -178,7 +189,7 @@ jobs:
           echo "Building application..."
 ```
 ## Хорошая практика №2. Выполнение тестов
-Добавление стадии тестирования для выявления ошибок до развёртывания
+Добавление стадии тестирования для выявления ошибок до развёртывания. Был создан файлик с гарантировано верными тестами для pytest (а-ля 2+2 = 4).
 ```
   # хорошая практика №2: выполнение тестов
   unit_tests:
@@ -201,60 +212,91 @@ jobs:
 ```
 
 ## Хорошая практика №3. Безопасное хранение секретов
-Используйте секреты, хранящиеся в безопасном месте, например, K8s secrets или secrets manager
+Используйте секреты, хранящиеся в безопасном месте. Использовали github secrets.
 ```
 steps:
       - name: Deploy step
         env:  # используем секреты, хранящиеся в безопасном месте (в нашем случае - GitHub Secrets)
           SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
+        run: |
+          echo "Deploying application..."
+          echo "Using secret: $SECRET_TOKEN"
 ```
 
+![image](https://github.com/user-attachments/assets/a5d5e7c8-6146-4e85-aed2-854bc7e0f0da)
+
+
 ## Хорошая практика №4. Уведомления
-Добавление уведомлений о статусе сборки для разработчиков
+Добавление уведомлений о статусе сборки для разработчиков. Обычно добавляется, например, через Slack, Email или Telegram, но для демонстрации достаточно и обычного echo.
 ```
-  notify:
+  notify_build:
     runs-on: ubuntu-20.04
-    needs: [build, unit_tests, deploy]  # уведомления запускаются после всех этапов
+    needs: [build]
     steps:
-      - name: Send notifications
-        run: |
-          echo "Sending notification about the status of the workflow..."
-          echo "Build, tests, and deployment have completed successfully."
+      - name: Notify build complete
+        run: echo "Build completed successfully!"
+
+  notify_tests:
+    runs-on: ubuntu-20.04
+    needs: [unit_tests]
+    steps:
+      - name: Notify tests complete
+        run: echo "Tests completed successfully!"
+
+  notify_deploy:
+    runs-on: ubuntu-20.04
+    needs: [deploy]
+    steps:
+      - name: Notify deploy complete
+        run: echo "Deploy completed successfully!"
 ```
 
 ## Хорошая практика №5. Параллельное выполнение процесса
-Разделение задач на несколько этапов для ускорения процесса развертывания
-parallel:
-  - build
-  - test
+Разделение задач на несколько этапов для ускорения процесса развертывания. Уведомления (notify_build, notify_tests, notify_deploy) выполняются параллельно с другими этапами, а не после всех этапов.
+То есть deploy, notify_build, notify_tests, и notify_deploy могут запускаться одновременно, если их зависимости выполнены. Это хорошо видно в Summary после пуша (скриншот ниже).
 
-deploy:
-  stage: deploy
-  script:
-    - echo "Deploying..."
+```
+  deploy:
+    runs-on: ubuntu-20.04
+    needs: [build]
+    steps:
+      - name: Deploy step
+        env:
+          SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
+        run: |
+          echo "Deploying application..."
+          echo "Using secret: $SECRET_TOKEN"
+
+  notify_build:
+    runs-on: ubuntu-20.04
+    needs: [build]
+    steps:
+      - name: Notify build complete
+        run: echo "Build completed successfully!"
+
+  notify_tests:
+    runs-on: ubuntu-20.04
+    needs: [unit_tests]
+    steps:
+      - name: Notify tests complete
+        run: echo "Tests completed successfully!"
+
+  notify_deploy:
+    runs-on: ubuntu-20.04
+    needs: [deploy]
+    steps:
+      - name: Notify deploy complete
+        run: echo "Deploy completed successfully!"
+
+```
 
 ## Результаты деплоя
 
 Подробные этапы деплоя можно посмотреть во вкладке Actions   
 
-![image](https://github.com/user-attachments/assets/9c6f9dd6-211c-4a63-93ef-895237754c8f)
+![image](https://github.com/user-attachments/assets/08b94d32-13e9-46e8-98b1-4f92984918cd)
 
 
-README с описанием плохих практик и их исправлений
-Плохой CI/CD файл:
-В этом разделе представлен плохой CI/CD файл и объясняется, какие плохие практики в нём содержатся.
-1. Нет версионирования
-Плохая практика: Используется тег latest, что может привести к неожиданным ошибкам в сборке.
-Исправление: В хорошем файле указано конкретное версионирование образа (например, docker:1.19.3), что повышает предсказуемость и стабильность сборок.
-2. Не выполняется тестирование
-Плохая практика: Сборка и развертывание происходят без выполнения тестов, что может привести к появлению ошибок в продакшене.
-Исправление: Добавлена стадия тестирования (например, unit_tests), что позволяет выявлять ошибки до развертывания и повышает качество кода.
-3. Неправильное использование секретов
-Плохая практика: Секреты хранятся в открытом виде в коде, что небезопасно и может привести к утечке данных.
-Исправление: В хорошем файле секреты хранятся безопасно и загружаются из защищенного хранилища (например, K8s secrets), что улучшает безопасность приложения.
-4. Отсутствие уведомлений
-Плохая практика: Разработчики не получают уведомлений о статусе сборки, что затрудняет выявление ошибок и реагирование на них.
-Исправление: В хорошем файле добавлены уведомления по электронной почте для команды, что позволяет оперативно реагировать на проблемы.
-5. Долгие процессы без параллельного выполнения
-Плохая практика: Все процессы выполняются последовательно, что замедляет развертывание и увеличивает время ожидания.
-Исправление: В хорошем файле добавлено параллельное выполнение задач (например, parallel), что ускоряет процесс развертывания и делает его более эффективным.
+## Выводы
+
+В данной работе была проведена работа с CI/CD - были рассмотрены 5 "плохих практик", которые может и запускаются нормально, но на дальней дистанции могут в разы усложнить разработку. Далее эти практики были исправлены на более предпочтительные и универсальные - начиная с тестов и заканчивая паралелльной отпарвкой уведомлений о завершении этапов тестирования, билда и деплоя. Все эти изменения были направлены на то, чтобы минимизировать риски и повысить производительность. Как мне кажется, вышло неплохо!
