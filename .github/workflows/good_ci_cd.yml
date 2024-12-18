@@ -34,10 +34,9 @@ jobs:
       - name: Run unit tests
         run: pytest lab4/test_math.py
 
-  # Стадия деплоя
   deploy:
     runs-on: ubuntu-20.04
-    needs: [build]  # Деплой зависит только от стадии build
+    needs: [build]
     steps:
       - name: Deploy step
         env:
