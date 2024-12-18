@@ -1,0 +1,35 @@
+name: Bad Practices Workflow
+
+# плохая практика №4: отсутствие уведомлений
+# здесь не указаны шаги для отправки уведомлений разработчикам о статусе выполнения
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  # плохая практика №1: нет версионирования
+  build:
+    runs-on: ubuntu-latest  # использование latest без указания конкретной версии
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build step
+        run: |
+          echo "Building..." 
+      # плохая практика №2: игнорируем тестирование — тестов здесь просто нет! what can go wrong, huh?)
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build  # плохая практика №5: последовательное выполнение этапов вместо параллельного
+    steps:
+      - name: Deploy step
+        env:
+          # плохая практика №3: неправильное использование секретов
+          SECRET_TOKEN: "12345"
+        run: |
+          echo "Deploying..."
+          echo "Using secret: $SECRET_TOKEN"
+          sleep 60  # долгий процесс без оптимизации (плохая практика №5)
