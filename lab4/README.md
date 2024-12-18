@@ -1,81 +1,229 @@
 # Пример плохого CI/CD файла
 
-# 1. Нет версионирования
-# Отсутствие явного указания версии может привести к непредсказуемым результатам
-# Например, мы просто используем latest tag, что может привести к ошибкам
+Ниже представлен код CI/CD файла с плохими практиками
 
-image: docker:latest
+```
+name: Bad Practices Workflow
 
-# 2. Не выполняется тестирование
-# Запуск без тестов может привести к тому, что ошибки не будут обнаружены до выхода в продакшен
+on:
+  push:
+    branches:
+      - main 
 
-stages:
-  - build
-  - deploy
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-build:
-  stage: build
-  script:
-    - echo "Building..."
+      - name: Build step
+        run: |
+          echo "Building..." 
 
-# 3. Неправильное использование секретов
-# Публикация секретов в открытом репозитории небезопасна
-variables:
-  SECRET_TOKEN: "12345"
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy step
+        env:
+          SECRET_TOKEN: "12345"
+        run: |
+          echo "Deploying..."
+          echo "Using secret: $SECRET_TOKEN"
+          sleep 60
 
-# 4. Отсутствие уведомлений
-# Разработчики не получают уведомлений о статусе сборки, что затрудняет выявление ошибок
+```
 
-# 5. Долгие процессы без параллельного выполнения
-# Если все работает последовательно, это увеличивает время развертывания
 
-deploy:
-  stage: deploy
-  script:
-    - echo "Deploying..."
-    - sleep 60  # эмуляция длительной операции
+## Плохая практика №1. Нет версионирования
+Отсутствие явного указания версии может привести к непредсказуемым результатам
+Например, мы просто используем latest tag, что может привести к ошибкам
 
+```
+jobs:
+  # плохая практика №1: нет версионирования
+  build:
+    runs-on: ubuntu-latest  # использование latest без указания конкретной версии
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build step
+        run: |
+          echo "Building..." 
+```
+
+## Плохая практика №2. Не выполняется тестирование
+Запуск без тестов может привести к тому, что ошибки не будут обнаружены до выхода в продакшен
+В нашем коде мы решили просто пропустить этап тестирования)  
+То есть build сразу идёт deploy.
+
+## Плохая практика №3. Неправильное использование секретов
+Публикация секретов в открытом репозитории небезопасна. Добавление секретов прямо в файл может привести к утечке, если репозиторий публичный.
+
+```
+steps:
+      - name: Deploy step
+        env:
+          # плохая практика №3: неправильное использование секретов
+          SECRET_TOKEN: "12345"
+```
+
+## Плохая практика №4. Отсутствие уведомлений
+Разработчики не получают уведомлений о статусе сборки, что затрудняет выявление ошибок
+
+## Плохая практика №5. Долгие процессы без параллельного выполнения
+Если все работает последовательно, это увеличивает время развертывания
+
+```
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build  # плохая практика №5: последовательное выполнение этапов вместо параллельного
+    steps:
+      - name: Deploy step
+        env:
+          # плохая практика №3: неправильное использование секретов
+          SECRET_TOKEN: "12345"
+        run: |
+          echo "Deploying..."
+          echo "Using secret: $SECRET_TOKEN"
+          sleep 60  # долгий процесс без оптимизации (плохая практика №5)
+```
+
+## Результаты деплоя
+
+Подробные этапы деплоя можно посмотреть во вкладке Actions  
+
+![image](https://github.com/user-attachments/assets/acb8b234-d33b-4fe5-b3b5-581628e33cba)
 
 
 
 # Пример хорошего CI/CD файла
 
-# 1. Версионирование образа
-# Указываем конкретную версию образа
-image: docker:1.19.3  # Используем стабильную версию образа
+Ниже представлен код CI/CD файла с хорошими практиками
 
-# 2. Выполнение тестов
-# Добавление стадии тестирования для выявления ошибок до развёртывания
-stages:
-  - build
-  - test
-  - deploy
+```
+name: Good Practices Workflow
 
-build:
-  stage: build
-  script:
-    - echo "Building..."
+on:
+  push:
+    branches:
+      - main
 
-# Тестирование приложения перед развертыванием
-unit_tests:
-  stage: test
-  script:
-    - echo "Running tests..."
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-# 3. Безопасное хранение секретов
-# Используйте секреты, хранящиеся в безопасном месте, например, K8s secrets или secrets manager
-variables:
-  SECRET_TOKEN: "$SECRET_TOKEN"
+      - name: Build step
+        run: |
+          echo "Building application..."
 
-# 4. Уведомления
-# Добавление уведомлений о статусе сборки для разработчиков
-notifications:
-  email:
-    recipients:
-      - team@example.com
+  unit_tests:
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-# 5. Параллельное выполнение процесса
-# Разделение задач на несколько этапов для ускорения процесса развертывания
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run unit tests
+        run: pytest lab4/tests/
+
+  deploy:
+    runs-on: ubuntu-20.04
+    needs: unit_tests
+    steps:
+      - name: Deploy step
+        env:
+          SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
+        run: |
+          echo "Deploying application..."
+          echo "Using secret: $SECRET_TOKEN"
+
+  notify:
+    runs-on: ubuntu-20.04
+    needs: [build, unit_tests, deploy]
+    steps:
+      - name: Send notifications
+        run: |
+          echo "Sending notification about the status of the workflow..."
+          echo "Build, tests, and deployment have completed successfully."
+
+```
+
+## Хорошая практика №1. Версионирование образа
+Указываем конкретную версию образа
+```
+jobs:
+  # хорошая практика №1: версионирование образа
+  build:
+    runs-on: ubuntu-20.04  # указываем конкретную версию образа
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build step
+        run: |
+          echo "Building application..."
+```
+## Хорошая практика №2. Выполнение тестов
+Добавление стадии тестирования для выявления ошибок до развёртывания
+```
+  # хорошая практика №2: выполнение тестов
+  unit_tests:
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"  # используем конкретную версию Python
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run unit tests
+        run: pytest lab4/tests/
+```
+
+## Хорошая практика №3. Безопасное хранение секретов
+Используйте секреты, хранящиеся в безопасном месте, например, K8s secrets или secrets manager
+```
+steps:
+      - name: Deploy step
+        env:  # используем секреты, хранящиеся в безопасном месте (в нашем случае - GitHub Secrets)
+          SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
+```
+
+## Хорошая практика №4. Уведомления
+Добавление уведомлений о статусе сборки для разработчиков
+```
+  notify:
+    runs-on: ubuntu-20.04
+    needs: [build, unit_tests, deploy]  # уведомления запускаются после всех этапов
+    steps:
+      - name: Send notifications
+        run: |
+          echo "Sending notification about the status of the workflow..."
+          echo "Build, tests, and deployment have completed successfully."
+```
+
+## Хорошая практика №5. Параллельное выполнение процесса
+Разделение задач на несколько этапов для ускорения процесса развертывания
 parallel:
   - build
   - test
@@ -84,6 +232,12 @@ deploy:
   stage: deploy
   script:
     - echo "Deploying..."
+
+## Результаты деплоя
+
+Подробные этапы деплоя можно посмотреть во вкладке Actions   
+
+![image](https://github.com/user-attachments/assets/9c6f9dd6-211c-4a63-93ef-895237754c8f)
 
 
 README с описанием плохих практик и их исправлений
