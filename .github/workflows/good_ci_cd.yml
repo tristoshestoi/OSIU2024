@@ -32,7 +32,7 @@ jobs:
         run: pip install pytest
 
       - name: Run unit tests
-        run: pytest lab4/test_math.py
+        run: pytest lab4/tests
 
   deploy:
     runs-on: ubuntu-20.04
